@@ -46,8 +46,10 @@ const GET_ISSUES_OF_REPO = `
       name
       url
       repository(name: $repo) {
+        id
         name
         url
+        viewerHasStarred
         issues(first: 5, after: $cursor, states: [OPEN]) {
           edges {
             node {
@@ -240,12 +242,16 @@ const Organization = ({ organization, errors, onFetchMoreIssues }) => {
 
 // Repository does not give a shit how issues are fetched, it simply displays them
 // lets see if the prop makes sense in the parent Organization component?
-const Repository = ({ repo, onFetchMoreIssues }) => (
+const Repository = ({ repo, onFetchMoreIssues, onStarRepository }) => (
   <div>
     <p>
       <strong>In Repository: </strong>
       <a href={repo.url}>{repo.name}</a>
     </p>
+
+    <button type="button" onClick={() => onStarRepository()}>
+      {repo.viewerHasStarred ? 'Unstar' : 'Star'}
+    </button>
 
     <ul>
       {repo.issues.edges.map(({ node }) => (
