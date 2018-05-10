@@ -25,12 +25,14 @@ const axiosGithubGraphQL = axios.create({
 // we will be spending a lot of time with Apollo later, Relay is
 // slowly dying off, AWS, and other large orgs adopted Apollo from the MDG
 // (Meteor Team)
-const GET_ISSUES_OF_REPO = `
+// 4. We are going to start off with a simple function, passing arguments
+// into the template string, then step 5 we will switch to GraphQL variables
+const getIssuesOfRepositoryQuery = (org, repo) => `
   {
-    organization(login: "facebook") {
+    organization(login: "${org}") {
       name
       url
-      repository(name: "react") {
+      repository(name: "${repo}") {
         name
         url
         issues(last: 5) {
@@ -57,22 +59,29 @@ class App extends Component {
   componentDidMount() {
     // The component mounted (this fires once), let's
     // execute the GraphQL Query
-    this.onFetchFromGithub();
+    this.onFetchFromGithub(this.state.path);
   }
 
   onChange = e => this.setState({ [e.target.id]: e.target.value });
 
   onSubmit = e => {
+    this.onFetchFromGithub(this.state.path);
+
     e.preventDefault();
   };
 
-  onFetchFromGithub = () =>
-    axiosGithubGraphQL.post('', { query: GET_ISSUES_OF_REPO }).then(res =>
-      this.setState({
-        organization: res.data.data.organization,
-        errors: res.data.errors
-      })
-    );
+  onFetchFromGithub = path => {
+    const [org, repo] = path.split('/');
+
+    axiosGithubGraphQL
+      .post('', { query: getIssuesOfRepositoryQuery(org, repo) })
+      .then(res =>
+        this.setState({
+          organization: res.data.data.organization,
+          errors: res.data.errors
+        })
+      );
+  };
 
   render() {
     const { path, organization, errors } = this.state;
