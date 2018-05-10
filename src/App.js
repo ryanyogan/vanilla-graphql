@@ -28,7 +28,9 @@ const GET_ORGANIZATION = `
 
 class App extends Component {
   state = {
-    path: 'facebook/react'
+    path: 'facebook/react',
+    organization: null,
+    errors: null
   };
 
   componentDidMount() {
@@ -44,9 +46,12 @@ class App extends Component {
   };
 
   onFetchFromGithub = () =>
-    axiosGithubGraphQL
-      .post('', { query: GET_ORGANIZATION })
-      .then(res => console.log(res));
+    axiosGithubGraphQL.post('', { query: GET_ORGANIZATION }).then(res =>
+      this.setState({
+        organization: res.data.data.organization,
+        errors: res.data.errors
+      })
+    );
 
   render() {
     const { path } = this.state;
