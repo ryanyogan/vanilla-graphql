@@ -202,7 +202,12 @@ class App extends Component {
 
 // Nope, Organization could give 2 shits about fetching more issues, thus
 // data down, actions up, let's have the App component deal with this problem.
-const Organization = ({ organization, errors, onFetchMoreIssues }) => {
+const Organization = ({
+  organization,
+  errors,
+  onFetchMoreIssues,
+  onStarRepository
+}) => {
   // Did we receive an error from the Query?
   if (errors) {
     return (
@@ -224,6 +229,7 @@ const Organization = ({ organization, errors, onFetchMoreIssues }) => {
       <Repository
         repo={organization.repository}
         onFetchMoreIssues={onFetchMoreIssues}
+        onStarRepository={onStarRepository}
       />
     </div>
   );
