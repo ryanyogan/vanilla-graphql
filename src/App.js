@@ -38,15 +38,17 @@ const axiosGithubGraphQL = axios.create({
 // In english "Dear GraphQL Server, may I have the last 3 reactions (stars)
 // for each of the last 5 issues that are open,
 // belonging to this repository, within this organization?"
+// 7. totalCount gives the int count of all issues, we will not be talking about
+// cursors here, they are a bit advanced, we will go over this in the real class :-]
 const GET_ISSUES_OF_REPO = `
-  query($org: String!, $repo: String!) {
+  query($org: String!, $repo: String!, $cursor: String) {
     organization(login: $org) {
       name
       url
       repository(name: $repo) {
         name
         url
-        issues(last: 5, states: [OPEN]) {
+        issues(first: 5, after: $cursor, states: [OPEN]) {
           edges {
             node {
               id
@@ -62,6 +64,11 @@ const GET_ISSUES_OF_REPO = `
               }
             }
           }
+          totalCount
+          pageInfo {
+            endCursor
+            hasNextPage
+          }
         }
       }
     }
@@ -71,12 +78,12 @@ const GET_ISSUES_OF_REPO = `
 // Notice how we are not cluttering up the App component
 // with these GraphQL helpers, normally we would import these from
 // higher order helper methods (or use Apollo :))
-const getIssuesOfRepository = path => {
+const getIssuesOfRepository = (path, cursor) => {
   const [org, repo] = path.split('/');
 
   return axiosGithubGraphQL.post('', {
     query: GET_ISSUES_OF_REPO,
-    variables: { org, repo }
+    variables: { org, repo, cursor }
   });
 };
 
@@ -84,10 +91,39 @@ const getIssuesOfRepository = path => {
 // in this particular instance we are calling this function from within
 // setState, thus, we return an object from this function that matches
 // our App component state structure
-const resolveIssuesQuery = queryResult => () => ({
-  organization: queryResult.data.data.organization,
-  errors: queryResult.data.errors
-});
+
+// Woh! WTF happened to this function?
+// Omitting the talk of the cursor, we need to merge our new results
+// with our current state... Explination on advanced course,
+// notice the currying, mmm, isn't that delicious :)
+const resolveIssuesQuery = (queryResult, cursor) => state => {
+  const { data, errors } = queryResult.data;
+
+  if (!cursor) {
+    return {
+      organization: data.organization,
+      errors
+    };
+  }
+
+  const { edges: oldIssues } = state.organization.repository.issues;
+  const { edges: newIssues } = data.organization.repository.issues;
+  const updatedIssues = [...oldIssues, ...newIssues];
+
+  return {
+    organization: {
+      ...data.organization,
+      repository: {
+        ...data.organization.repository,
+        issues: {
+          ...data.organization.repository.issues,
+          edges: updatedIssues
+        }
+      }
+    },
+    errors
+  };
+};
 
 class App extends Component {
   state = {
@@ -110,10 +146,18 @@ class App extends Component {
     e.preventDefault();
   };
 
-  onFetchFromGithub = path =>
-    getIssuesOfRepository(path).then(queryResult =>
-      this.setState(resolveIssuesQuery(queryResult))
+  onFetchFromGithub = (path, cursor) =>
+    getIssuesOfRepository(path, cursor).then(queryResult =>
+      this.setState(resolveIssuesQuery(queryResult, cursor))
     );
+
+  // Thre we go!  This is a good place to fetch more issues, we will then
+  // re-render due to setState, pass the data down, turtles in a half shell!
+  onFetchMoreIssues = () => {
+    const { endCursor } = this.state.organization.repository.issues.pageInfo;
+
+    this.onFetchFromGithub(this.state.path, endCursor);
+  };
 
   render() {
     const { path, organization, errors } = this.state;
@@ -137,8 +181,13 @@ class App extends Component {
         <hr />
 
         {/* Does organization exist? If so render the component, if not wait */}
+        {/* See how we continue to pass down onFetchMoreIssues, pretty nifty eh? */}
         {organization ? (
-          <Organization organization={organization} errors={errors} />
+          <Organization
+            organization={organization}
+            errors={errors}
+            onFetchMoreIssues={this.onFetchMoreIssues}
+          />
         ) : (
           <p>No Information Yet ...</p>
         )}
@@ -148,7 +197,10 @@ class App extends Component {
 }
 
 // Small stateless component, normally this would be in ./src/components/Organization
-const Organization = ({ organization, errors }) => {
+
+// Nope, Organization could give 2 shits about fetching more issues, thus
+// data down, actions up, let's have the App component deal with this problem.
+const Organization = ({ organization, errors, onFetchMoreIssues }) => {
   // Did we receive an error from the Query?
   if (errors) {
     return (
@@ -166,7 +218,11 @@ const Organization = ({ organization, errors }) => {
         <a href={organization.url}>{organization.name}</a>
       </p>
       {/* Here we now include the Repository component to clean up concerns */}
-      <Repository repo={organization.repository} />
+      {/* There we go, let us pass in onFetchMoreIssues, App is going to handle it */}
+      <Repository
+        repo={organization.repository}
+        onFetchMoreIssues={onFetchMoreIssues}
+      />
     </div>
   );
 };
@@ -181,7 +237,10 @@ const Organization = ({ organization, errors }) => {
 // the scenes, so in this case, I was able to destructure ({ node })
 // don't worry if this is weird, strange, stupid, it will make sense
 // over time :)
-const Repository = ({ repo }) => (
+
+// Repository does not give a shit how issues are fetched, it simply displays them
+// lets see if the prop makes sense in the parent Organization component?
+const Repository = ({ repo, onFetchMoreIssues }) => (
   <div>
     <p>
       <strong>In Repository: </strong>
@@ -197,6 +256,12 @@ const Repository = ({ repo }) => (
         </li>
       ))}
     </ul>
+
+    <hr />
+
+    {repo.issues.pageInfo.hasNextPage && (
+      <button onClick={onFetchMoreIssues}>Gimme More Issues!</button>
+    )}
   </div>
 );
 
