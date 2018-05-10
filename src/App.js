@@ -49,6 +49,9 @@ const GET_ISSUES_OF_REPO = `
         id
         name
         url
+        stargazers {
+          totalCount
+        }
         viewerHasStarred
         issues(first: 5, after: $cursor, states: [OPEN]) {
           edges {
@@ -297,7 +300,8 @@ const Repository = ({ repo, onFetchMoreIssues, onStarRepository }) => (
       type="button"
       onClick={() => onStarRepository(repo.id, repo.viewerHasStarred)}
     >
-      {repo.viewerHasStarred ? 'Unstar' : 'Star'}
+      {repo.stargazers.totalCount}
+      {repo.viewerHasStarred ? ' Unstar' : ' Star'}
     </button>
 
     <ul>
