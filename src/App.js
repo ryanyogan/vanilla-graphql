@@ -11,8 +11,21 @@ const axiosGithubGraphQL = axios.create({
 const TITLE = 'GraphQL without a client';
 
 class App extends Component {
-  state = {};
+  state = {
+    path: 'facebook/react'
+  };
+
+  componentDidMount() {}
+
+  onChange = e => this.setState({ [e.target.id]: e.target.value });
+
+  onSubmit = e => {
+    e.preventDefault();
+  };
+
   render() {
+    const { path } = this.state;
+
     return (
       <div>
         <h1>{TITLE}</h1>
@@ -22,6 +35,7 @@ class App extends Component {
           <input
             id="url"
             type="text"
+            value={path}
             onChange={this.onChange}
             style={{ width: '300px' }}
           />
