@@ -54,7 +54,7 @@ class App extends Component {
     );
 
   render() {
-    const { path } = this.state;
+    const { path, organization, errors } = this.state;
 
     return (
       <div>
@@ -74,10 +74,37 @@ class App extends Component {
 
         <hr />
 
-        {/* The results will be displayed here... */}
+        {/* Does organization exist? If so render the component, if not wait */}
+        {organization ? (
+          <Organization organization={organization} errors={errors} />
+        ) : (
+          <p>No Information Yet ...</p>
+        )}
       </div>
     );
   }
 }
+
+// Small stateless component, normally this would be in ./src/components/Organization
+const Organization = ({ organization, errors }) => {
+  // Did we receive an error from the Query?
+  if (errors) {
+    return (
+      <p>
+        <strong>Something went wrong :(</strong>
+        {errors.map(err => err.message).join(' ')}
+      </p>
+    );
+  }
+
+  return (
+    <div>
+      <p>
+        <strong>Issues from Organization: </strong>
+        <a href={organization.url}>{organization.name}</a>
+      </p>
+    </div>
+  );
+};
 
 export default App;
