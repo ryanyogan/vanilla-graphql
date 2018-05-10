@@ -19,7 +19,13 @@ const axiosGithubGraphQL = axios.create({
 // gql query for retreiving an organization from Github
 // 2. Now we are also asking for a nested resource, "repository"
 // How cool is that?!
-const GET_REPO_OF_ORG = `
+// 3. Let's grab the "last: 5" issues from the repo now!
+// Why edges / node?  This is the Relay way, Github chose this
+// to support both Apollo and Relay (two popular GraphQL clients)
+// we will be spending a lot of time with Apollo later, Relay is
+// slowly dying off, AWS, and other large orgs adopted Apollo from the MDG
+// (Meteor Team)
+const GET_ISSUES_OF_REPO = `
   {
     organization(login: "facebook") {
       name
@@ -27,6 +33,15 @@ const GET_REPO_OF_ORG = `
       repository(name: "react") {
         name
         url
+        issues(last: 5) {
+          edges {
+            node {
+              id
+              title
+              url
+            }
+          }
+        }
       }
     }
   }
@@ -52,7 +67,7 @@ class App extends Component {
   };
 
   onFetchFromGithub = () =>
-    axiosGithubGraphQL.post('', { query: GET_REPO_OF_ORG }).then(res =>
+    axiosGithubGraphQL.post('', { query: GET_ISSUES_OF_REPO }).then(res =>
       this.setState({
         organization: res.data.data.organization,
         errors: res.data.errors
@@ -116,12 +131,29 @@ const Organization = ({ organization, errors }) => {
 };
 
 // Repository is another stateless component which renders a repo link
+// Have you noticed something cool? We are creating components that match
+// the graph structure defined by Github ... Organization -> Repository -> Issues
+
+// Woh... wait a minute buddy, what is this node nonsense again?
+// Well we could do `map(issue => console.log(issue.node.id))`
+// As you can see, each "edge", has a node, as this is a Graph behind
+// the scenes, so in this case, I was able to destructure ({ node })
+// don't worry if this is weird, strange, stupid, it will make sense
+// over time :)
 const Repository = ({ repo }) => (
   <div>
     <p>
       <strong>In Repository: </strong>
       <a href={repo.url}>{repo.name}</a>
     </p>
+
+    <ul>
+      {repo.issues.edges.map(({ node }) => (
+        <li key={node.id}>
+          <a href={node.url}>{node.title}</a>
+        </li>
+      ))}
+    </ul>
   </div>
 );
 
