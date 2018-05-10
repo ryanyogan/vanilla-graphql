@@ -90,6 +90,16 @@ const ADD_STAR = `
   }
 `;
 
+const REMOVE_STAR = `
+  mutation($repoId: ID!) {
+    removeStar(input: { starrableId: $repoId }) {
+      starrable {
+        viewerHasStarred
+      }
+    }
+  }
+`;
+
 // Notice how we are not cluttering up the App component
 // with these GraphQL helpers, normally we would import these from
 // higher order helper methods (or use Apollo :))
@@ -146,6 +156,12 @@ const addStarToRepository = repoId =>
     variables: { repoId }
   });
 
+const removeStarFromRepository = repoId =>
+  axiosGithubGraphQL.post('', {
+    query: REMOVE_STAR,
+    variables: { repoId }
+  });
+
 const resolveAddStarMutation = mutationResult => state => {
   const { viewerHasStarred } = mutationResult.data.data.addStar.starrable;
   const { totalCount } = state.organization.repository.stargazers;
@@ -159,6 +175,27 @@ const resolveAddStarMutation = mutationResult => state => {
         viewerHasStarred,
         stargazers: {
           totalCount: totalCount + 1 // This is ad-hoc optimistic ui ;) seriously...
+        }
+      }
+    }
+  };
+};
+
+// See the duplication here?  What can you do to create one method?
+// We are currying here so that should be a big hint...
+const resolveRemoveStarMutation = mutationResult => state => {
+  const { viewerHasStarred } = mutationResult.data.data.removeStar.starrable;
+  const { totalCount } = state.organization.repository.stargazers;
+
+  return {
+    ...state,
+    organization: {
+      ...state.organization,
+      repository: {
+        ...state.organization.repository,
+        viewerHasStarred,
+        stargazers: {
+          totalCount: totalCount - 1 // This is ad-hoc optimistic ui ;) seriously...
         }
       }
     }
@@ -200,9 +237,15 @@ class App extends Component {
   };
 
   onStarRepository = (repoId, viewerHasStarred) => {
-    addStarToRepository(repoId).then(mutationResult =>
-      this.setState(resolveAddStarMutation(mutationResult))
-    );
+    if (viewerHasStarred) {
+      removeStarFromRepository(repoId).then(mutationResult =>
+        this.setState(resolveRemoveStarMutation(mutationResult))
+      );
+    } else {
+      addStarToRepository(repoId).then(mutationResult =>
+        this.setState(resolveAddStarMutation(mutationResult))
+      );
+    }
   };
 
   render() {
