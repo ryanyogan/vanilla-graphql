@@ -27,12 +27,18 @@ const axiosGithubGraphQL = axios.create({
 // (Meteor Team)
 // 4. We are going to start off with a simple function, passing arguments
 // into the template string, then step 5 we will switch to GraphQL variables
-const getIssuesOfRepositoryQuery = (org, repo) => `
-  {
-    organization(login: "${org}") {
+// 5. Now we are back to a constant, notice the $org: String!, this says the
+// first argument we pass in, we want to call it "$org", it is of a Type String
+// and it is required (client side validation for free!) with the "!"
+// String!  says give me a string, and I mean it, not an option!
+// How do we populate this?  Let's take a peek at the getIssuesOfRepository
+// function call, hint "variables"
+const GET_ISSUES_OF_REPO = `
+  query($org: String!, $repo: String!) {
+    organization(login: $org) {
       name
       url
-      repository(name: "${repo}") {
+      repository(name: $repo) {
         name
         url
         issues(last: 5) {
@@ -48,6 +54,27 @@ const getIssuesOfRepositoryQuery = (org, repo) => `
     }
   }
 `;
+
+// Notice how we are not cluttering up the App component
+// with these GraphQL helpers, normally we would import these from
+// higher order helper methods (or use Apollo :))
+const getIssuesOfRepository = path => {
+  const [org, repo] = path.split('/');
+
+  return axiosGithubGraphQL.post('', {
+    query: GET_ISSUES_OF_REPO,
+    variables: { org, repo }
+  });
+};
+
+// This helper function marshalls our results into a form we prefer,
+// in this particular instance we are calling this function from within
+// setState, thus, we return an object from this function that matches
+// our App component state structure
+const resolveIssuesQuery = queryResult => () => ({
+  organization: queryResult.data.data.organization,
+  errors: queryResult.data.errors
+});
 
 class App extends Component {
   state = {
@@ -70,18 +97,10 @@ class App extends Component {
     e.preventDefault();
   };
 
-  onFetchFromGithub = path => {
-    const [org, repo] = path.split('/');
-
-    axiosGithubGraphQL
-      .post('', { query: getIssuesOfRepositoryQuery(org, repo) })
-      .then(res =>
-        this.setState({
-          organization: res.data.data.organization,
-          errors: res.data.errors
-        })
-      );
-  };
+  onFetchFromGithub = path =>
+    getIssuesOfRepository(path).then(queryResult =>
+      this.setState(resolveIssuesQuery(queryResult))
+    );
 
   render() {
     const { path, organization, errors } = this.state;
