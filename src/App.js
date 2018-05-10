@@ -249,7 +249,10 @@ const Repository = ({ repo, onFetchMoreIssues, onStarRepository }) => (
       <a href={repo.url}>{repo.name}</a>
     </p>
 
-    <button type="button" onClick={() => onStarRepository()}>
+    <button
+      type="button"
+      onClick={() => onStarRepository(repo.id, repo.viewerHasStarred)}
+    >
       {repo.viewerHasStarred ? 'Unstar' : 'Star'}
     </button>
 
