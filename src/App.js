@@ -77,6 +77,16 @@ const GET_ISSUES_OF_REPO = `
   }
 `;
 
+const ADD_STAR = `
+  mutation($repoId: ID!) {
+    addStar(input: { starrableId: $repoId }) {
+      starrable {
+        viewerHasStarred
+      }
+    }
+  }
+`;
+
 // Notice how we are not cluttering up the App component
 // with these GraphQL helpers, normally we would import these from
 // higher order helper methods (or use Apollo :))
@@ -127,6 +137,27 @@ const resolveIssuesQuery = (queryResult, cursor) => state => {
   };
 };
 
+const addStarToRepository = repoId =>
+  axiosGithubGraphQL.post('', {
+    query: ADD_STAR,
+    variables: { repoId }
+  });
+
+const resolveAddStarMutation = mutationResult => state => {
+  const { viewerHasStarred } = mutationResult.data.data.addStar.starrable;
+
+  return {
+    ...state,
+    organization: {
+      ...state.organization,
+      repository: {
+        ...state.organization.repository,
+        viewerHasStarred
+      }
+    }
+  };
+};
+
 class App extends Component {
   state = {
     path: 'facebook/react',
@@ -161,6 +192,12 @@ class App extends Component {
     this.onFetchFromGithub(this.state.path, endCursor);
   };
 
+  onStarRepository = (repoId, viewerHasStarred) => {
+    addStarToRepository(repoId).then(mutationResult =>
+      this.setState(resolveAddStarMutation(mutationResult))
+    );
+  };
+
   render() {
     const { path, organization, errors } = this.state;
 
@@ -189,6 +226,7 @@ class App extends Component {
             organization={organization}
             errors={errors}
             onFetchMoreIssues={this.onFetchMoreIssues}
+            onStarRepository={this.onStarRepository}
           />
         ) : (
           <p>No Information Yet ...</p>
