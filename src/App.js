@@ -33,6 +33,11 @@ const axiosGithubGraphQL = axios.create({
 // String!  says give me a string, and I mean it, not an option!
 // How do we populate this?  Let's take a peek at the getIssuesOfRepository
 // function call, hint "variables"
+// 6. states: [OPEN], this is not GraphQL voodoo, you may create simple Enum's (Structs)
+// to define particular states.  In this instance, an issue may be OPEN, CLOSED
+// In english "Dear GraphQL Server, may I have the last 3 reactions (stars)
+// for each of the last 5 issues that are open,
+// belonging to this repository, within this organization?"
 const GET_ISSUES_OF_REPO = `
   query($org: String!, $repo: String!) {
     organization(login: $org) {
@@ -41,12 +46,20 @@ const GET_ISSUES_OF_REPO = `
       repository(name: $repo) {
         name
         url
-        issues(last: 5) {
+        issues(last: 5, states: [OPEN]) {
           edges {
             node {
               id
               title
               url
+              reactions(last: 3) {
+                edges {
+                  node {
+                    id
+                    content
+                  }
+                }
+              }
             }
           }
         }
@@ -179,10 +192,23 @@ const Repository = ({ repo }) => (
       {repo.issues.edges.map(({ node }) => (
         <li key={node.id}>
           <a href={node.url}>{node.title}</a>
+
+          <ReactionList reactions={node.reactions} />
         </li>
       ))}
     </ul>
   </div>
+);
+
+// Turtles all the way down the graph!  We create another
+// small concern component that matches the nested
+// graph structure, so easy to reason about!
+const ReactionList = ({ reactions }) => (
+  <ul>
+    {reactions.edges.map(reaction => (
+      <li key={reaction.node.id}>{reaction.node.content}</li>
+    ))}
+  </ul>
 );
 
 export default App;
