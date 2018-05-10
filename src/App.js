@@ -148,6 +148,7 @@ const addStarToRepository = repoId =>
 
 const resolveAddStarMutation = mutationResult => state => {
   const { viewerHasStarred } = mutationResult.data.data.addStar.starrable;
+  const { totalCount } = state.organization.repository.stargazers;
 
   return {
     ...state,
@@ -155,7 +156,10 @@ const resolveAddStarMutation = mutationResult => state => {
       ...state.organization,
       repository: {
         ...state.organization.repository,
-        viewerHasStarred
+        viewerHasStarred,
+        stargazers: {
+          totalCount: totalCount + 1 // This is ad-hoc optimistic ui ;) seriously...
+        }
       }
     }
   };
